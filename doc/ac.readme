@@ -1,0 +1,30 @@
+1) Need to enable bus master??  PCI04[2]
+
+PCI04:  PCI Status/Command
+pci configuration address:  0x04
+29  Terminated with Master Abort:  This bit is set whenever a transaction 
+    initiated by the CL-GD5480 is terminated with a master-abort.  This is 
+    caused by lack of DEVSEL# on a transaction started by the CL_GD5480.  This 
+    bit is cleared by a write of '1'.  A write of '0' has no effect.
+28  Terminated with Target Abort:  This bit is set whenever a transaction 
+    initiated by the CL-GD5480 has terminated with a target-abort.  This bit 
+    is cleared by a write of '1'.  A write of '0' has no effect.
+27  Target Abort Signalled:  The CL-GD5480 terminates any I/O cycle with byte 
+    enables active for both upper and lower 16 bits.  This does not apply to 
+    the BitBLT Control registers.
+2   Enable Bus Master:  If this bit is programmed to '1', the CL-GD5480 is
+    enabled as bus master.  It does not actually initiate any bus transactions
+    until programmed to do so.
+
+PCI0C:  PCI Latency Timer:
+pci configuration address:  0x0c
+15:8    Latency Timer[7:0]:  This register specifies, in units of PCI bus
+        clocks, the value of the latency timer for the CL-GD5480 when it is
+        a bus master.  This value is reset to '0' and must br programmed by
+        the BIOS.
+
+
+SR7 for bpp
+
+turn off bus mastering when device unloaded
+

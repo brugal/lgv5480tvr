@@ -1,0 +1,118 @@
+CR3F:  Miscellaneous Video Control
+5  INTA# Pin Source Select:  This bit controls the internal interrupt request.
+   If this bit is 0, the VGA VSYNC is the interrupt request.  If this bit is 
+   1, the video port VREF is the interrupt request.
+2  Current Capture Buffer Statue (Read Only):  This read-only bit indicates 
+   which video buffer is being used as the capture buffer at the last valid 
+   falling edge of VREF.  When CR66[6] is set, use CR6F[3:2] to determine 
+   which buffer is being used.
+
+   CR3F[2]        Buffer         Buffer Pointers      Capture Buffer
+               (CL-GD5480)                             (CL-GD5446)
+
+     0      Capture Buffer 1       CR59/CR5A          Video buffer 2
+     1      Window 1 Source 1      CR3A/CR3B          Video buffer 1
+
+
+1  VPORT Interrupt Control:  If this bit is 1, the VPORT interrupt is enabled.
+   The next occurrence of the VPORT VREF (or CCIR656 encoded end of field) is 
+   captured in GR17[4].  If the INTA# pin is enabled, an interrupt is 
+   generated.  Clearing this bit clears GR17[4] and resets the interrupt 
+   request.  CR62[0] is not affected by the state of this bit but does reflect
+   the interrupt status.  After programming this bit to 0, the application 
+   must program it to 1 if the next VREF is to generate an interrupt.  The 
+   interrupt request is generated on the active edge of VREF.
+
+CR62:  Interrupt Source and Status
+7:5  Capture Overrun Count [2:0]:  This field contains a count of the number
+     of VREFs since the Video Stream Engine Overrun bit (CR62[1]) was set.
+     The count begins when the overrun bit is set.  The count is cleared when 
+     the overrun bit is reset.
+
+     The count may be read at any time.  It is reset when the Video Stream 
+     Engine Overrun bit (CR62[1]) and either Video Stream Engine Buffer 
+     Complete bit (CR62[3,2]) are cleared by a write of 1.
+
+     When the stream engine is off (CR7F[1]), this field counts valid capture 
+     VREFs as long as VPORT is active.  The first valid VREF sets CR62[1] and 
+     starts the count.  Clearing CR62[1] clears the count.  This function may 
+     be used by the capture software to keep track of the field count.
+
+3:2  Video Stream Engine Transfer Complete [2:1].  These two bits indicate 
+     that a Video Stream Engine Transfer has completed using the respective 
+     buffer.  The bit must be cleared by a write of '1' before another 
+     transfer using the same buffer can start.
+
+     If the INTA# pin is enabled and CR7F[2] is '1', an interrupt is requested 
+     when either or both of these bits is programmed to 1.  The interrupt 
+     service routine must explicitly write 1 to the  respective bit.
+
+1    Video Stream Engine Overrun:  This bit indicates that a video stream 
+     engine overrun has occured.  This is triggered when the occurrence of a 
+     VPORT VREF requires that capture data be written and either of two 
+     conditions apply.  Either the previous transfer on the respective buffer 
+     did not complete because of PCI bus contention, or the application has not
+     acknowledged the transfer by a write of '1' to the respective transfer 
+     complete status bit (CR62[3:2]).
+
+     When this bit is '1', the Capture Overrun Count increments with each VREF,
+     indicating another missed frame.  No new transfers using the offending 
+     buffer begins until the current transfer completes and is acknowledged.  
+     Typically this bit is cleared at the same time the transfer complete 
+     status bit is cleared.
+
+     If the INTA# pin is enabled and CR7F[2] is '1', an interrupt is requested
+     while this bit is '1'.  The interrupt service routine must explicitly 
+     write '1' to this bit.
+
+0    VPORT VREF IRQ Status:  This bit indicates that a V-Port field capture has
+     completed.  The bit remains set until cleared by a write of 1.
+            
+     If the INTA# pin is enabled, an interrupt is requested while this bit is 
+     1.  The interrupt service routine must explicitly write 1 to this bit.  
+     A write of 1 to this bit doesn't change the state of GR17[4] or CR3F[1].
+
+CR7F: Stream Engine Controls
+4  Constant Value Enabled:  If this bit is 1, the stream engine transfers the 
+   data in GR38-GR3B rather than data from the frame buffer.  The dword in 
+   GR38-GR3B is replicated in system memory. This is intended for initializing
+   the Z-buffer.
+3  Stream Engine Transfer Mode:  If this bit is 0, the stream engine transfers
+   a single frame and then stops.  It always uses Buffer 1. It does not wait 
+   for VPORT VREF. 
+
+   If this bit is 1, the stream engine transfers frames continuously.  It 
+   alternates buffers, beginning with Buffer 1.  It synchronizes itself to the
+   V-Port capture according to the V-Port capture mode.
+2  Enable Stream Engine Interrupt:  If this bit is 1, the stream engine status
+   bits in CR62 generates interrupt requests if the INTA# pin is enabled.  If 
+   this bit is 0, the stream engine status bits in CR62 never generates 
+   interrupt requests.
+1  Stream Engine Start/Pause:  Programming this bit to 1 starts (or restarts 
+   the stream engine.  Programming this bit to 0 stops the stream engine at 
+   the end of the current burst.
+            
+   When the stream engine is stopped by programming this bit to 0, it can 
+   restart by programming the bit back to 1, if CR7F[0] is not programmed to 1.
+0  Stream Engine Reset:  Programming this bit to 1 resets the stream engine.  
+   If a transfer is in progress it is terminated at the end of the current PCI
+   bus master write burst.  Status bits in CR62 are cleared.  Any Interrupt 
+   request due to the stream engine is cleared.  This bit must be programmed 
+   to 0 to reenable the stream engine.
+
+GR17:  Active Display Line Readback Byte 1
+4  V-Port Interrupt Status:  This read-only bit returns the status of the 
+   V-Port interrupt if enabeld in CR3F[1].  A 1 indicates that VPORT VREF was 
+   the source of the interrupt request.  This status bit is cleard only by 
+   writing 0 to CR3F[1].
+
+   This status condition can also be read in CR62[0], allowing an interrupt 
+   service routine to read a single register to look for all possible sources.
+   If the software uses CR62 exclusively, it need never clear this bit.
+2  Enable INTA#:  This bit is used only if a pull-down resistor is installed 
+   on GPIOD3 to claim a PCI interrupt.  If so and this bit is 0, an internal 
+   interrupt condition is prevented from driving the INTA# pin low.  If this 
+   bit is 1 and the interrupt is claimed, an internal interrupt condition 
+   causes INTA# to be driven low.  See CR62 to determine the source of the 
+   interrupt request.
+
